@@ -4,53 +4,148 @@
 <head>
     <meta charset="UTF-8" />
     <title>Children's Allowance Manager</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+    <style>
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+
+        .highlight {
+            background-color: yellow;
+            transition: background-color 1s ease;
+        }
+
+
+        table {
+            margin-bottom: 10px;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .form-section {
+            flex: 1 1 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-section {
+            flex: 1 1 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        :root {
+            --primary: #4a90e2;
+            --secondary: #e1e1e1;
+            --bg-color: #f9f9f9;
+            --font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-family);
+            color: #333;
+            margin: 20px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ab8;
+            /* A slightly darker blue */
+        }
+    </style>
 </head>
 
 <body>
     <h1>Children's Allowance Manager</h1>
+    <div class="container">
+        <div class="form-section">
+            <!-- Form for ad hoc transactions -->
+            <form id="transaction-form" class="mb-4">
+                <div class="form-group">
+                    <label for="child">Child:</label>
+                    <select id="child" name="child" class="form-control">
+                        <!-- Options will be created automatically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="type">Transaction Type:</label>
+                    <select id="type" name="type" class="form-control">
+                        <!-- Changed to Income and Expense -->
+                        <option value="Expense">Expense</option>
+                        <option value="Income">Income</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-date">Transaction Date:</label>
+                    <input type="date" id="transaction-date" required class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount:</label>
+                    <input type="number" id="amount" step="0.01" required class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label for="note">Note:</label>
+                    <input type="text" id="note" class="form-control" />
+                </div>
+                <button type="submit">Add Transaction</button>
+            </form>
 
-    <!-- Form for ad hoc transactions -->
-    <form id="transaction-form">
-        <label for="child">Child:</label>
-        <select id="child" name="child">
-            <!-- Options will be created automatically -->
-        </select>
-        <br /><br />
+            <div id="message"></div>
 
-        <label for="type">Transaction Type:</label>
-        <select id="type" name="type">
-            <option value="Expense">Expense</option>
-            <option value="Income">Income</option>
-        </select>
-        <br /><br />
+            <!-- Tithing Calculator -->
+            <h2>Tithing Calculator</h2>
+            <button id="calculate-tithing-button">Calculate Tithing</button>
+            <div id="tithing-result"></div>
+        </div>
+        <div class="history-section">
+            <!-- Controls for filtering and sorting the transaction history -->
+            <div id="table-controls">
+                <label for="filter-type">Filter by Type:</label>
+                <select id="filter-type">
+                    <option value="all">All</option>
+                    <option value="Weekly Allowance">Weekly Allowance</option>
+                    <option value="Income">Income</option>
+                    <option value="Expense">Expense</option>
+                </select>
 
-        <label for="transaction-date">Transaction Date:</label>
-        <input type="date" id="transaction-date" required />
-        <br /><br />
+                <label for="sort-by">Sort by:</label>
+                <select id="sort-by">
+                    <option value="date-asc">Date (Ascending)</option>
+                    <option value="date-desc">Date (Descending)</option>
+                    <option value="amount-asc">Amount (Low to High)</option>
+                    <option value="amount-desc">Amount (High to Low)</option>
+                </select>
 
-        <label for="amount">Amount:</label>
-        <input type="number" id="amount" step="0.01" required />
-        <br /><br />
+                <button id="apply-filters-button">Apply</button>
+            </div>
 
-        <label for="note">Note:</label>
-        <input type="text" id="note" />
-        <br /><br />
-
-        <button type="submit">Add Transaction</button>
-    </form>
-
-    <div id="message"></div>
-
-    <!-- Transaction history display -->
-    <h2>Transaction History</h2>
-    <div id="transaction-history">
-        <!-- History table will be loaded here -->
+            <!-- Transaction history display -->
+            <h2>Transaction History</h2>
+            <div id="transaction-history">
+                <!-- History table will be loaded here -->
+            </div>
+        </div>
     </div>
-
-    <!-- Tithing Calculator -->
-    <h2>Tithing Calculator</h2>
-    <button id="calculate-tithing-button">Calculate Tithing</button>
-    <div id="tithing-result"></div>
 
     <script src="renderer.js"></script>
 </body>

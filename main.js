@@ -20,6 +20,7 @@ function getLastWeeklyAllowance(childName) {
     if (lines.length < 2) return null; // Only a header exists.
 
     const header = lines[0].split(',');
+    const idIndex = header.indexOf("ID");
     const dateIndex = header.indexOf("Date");
     const childIndex = header.indexOf("Child");
     const typeIndex = header.indexOf("Type");
@@ -27,6 +28,7 @@ function getLastWeeklyAllowance(childName) {
 
     for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',');
+        
         if (cols[typeIndex].trim() === "Weekly Allowance" && cols[childIndex].trim() === childName) {
             const dt = new Date(cols[dateIndex].trim());
             if (!lastDate || dt > lastDate) {
@@ -94,7 +96,7 @@ async function catchupAllowances() {
     for (let child of config.children) {
         const childName = child.name;
         const birthdate = new Date(child.birthdate);
-        
+
         // Use a configured allowanceStartDate if provided (otherwise default to birthdate).
         const allowanceStart = child.allowanceStartDate ? new Date(child.allowanceStartDate) : birthdate;
 
@@ -111,7 +113,10 @@ async function catchupAllowances() {
         while (nextFriday <= lastFriday) {
             const age = getAge(birthdate, nextFriday);
             const allowance = age / 2; // Weekly allowance = (age ÷ 2).
+
+            // Updated: recoded as Income (with a note indicating that it’s an allowance)
             const transaction = {
+                id: crypto.randomUUID(),
                 date: nextFriday.toISOString(),
                 child: childName,
                 type: 'Weekly Allowance',
@@ -137,54 +142,54 @@ function createWindow() {
         width: 800,
         height: 600,
         webPreferences: {
-            // Enabling Node integration for simplicity.
+            // For simplicity in this example, enable Node integration.
             nodeIntegration: true,
             contextIsolation: false
         }
     });
-    win.loadFile('index.html');
+    win.loadFile("index.html");
 }
 
 app.whenReady().then(async () => {
     await catchupAllowances();
     createWindow();
 
-    app.on('activate', function () {
+    app.on("activate", function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
 
 // Handle ad hoc transaction requests from the renderer.
 ipcMain.on("add-custom-transaction", (event, transaction) => {
-  // If a date was provided, use it; otherwise default to current date.
-  if (transaction.date) {
-    let userDate = new Date(transaction.date);
-    if (isNaN(userDate.getTime())) {
-      userDate = new Date();
+    // Use the provided date if available.
+    if (transaction.date) {
+        let userDate = new Date(transaction.date);
+        if (isNaN(userDate.getTime())) {
+            userDate = new Date();
+        }
+        transaction.date = userDate.toISOString();
+    } else {
+        transaction.date = new Date().toISOString();
     }
-    transaction.date = userDate.toISOString();
-  } else {
-    transaction.date = new Date().toISOString();
-  }
 
-  // Adjust the amount: if type is "Expense", record the amount as negative.
-  if (transaction.type === "Expense" && transaction.amount > 0) {
-    transaction.amount = -Math.abs(transaction.amount);
-  } 
-  if(transaction.type === "Income" && transaction.amount < 0) {
-    transaction.amount = Math.abs(transaction.amount);
-  }
+    // Enforce amount sign based on transaction type.
+    // For Expense, the amount is negative;
+    // for Income, the amount is kept positive.
+    if (transaction.type === "Expense" && transaction.amount > 0) {
+        transaction.amount = -Math.abs(transaction.amount);
+    } else if (transaction.type === "Income" && transaction.amount < 0) {
+        transaction.amount = Math.abs(transaction.amount);
+    }
 
-  // Add the transaction and respond.
-  addTransaction(transaction)
-    .then(() => {
-      event.reply("transaction-added", "Transaction successfully added!");
-    })
-    .catch((err) => {
-      event.reply("transaction-added", "Error adding transaction: " + err);
-    });
+    addTransaction(transaction)
+        .then(() => {
+            event.reply("transaction-added", "Transaction successfully added!");
+        })
+        .catch((err) => {
+            event.reply("transaction-added", "Error adding transaction: " + err);
+        });
 });
 
-app.on('window-all-closed', function () {
-    if (process.platform !== 'darwin') app.quit();
+app.on("window-all-closed", function () {
+    if (process.platform !== "darwin") app.quit();
 });

@@ -3,216 +3,246 @@ const { ipcRenderer } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
+// Global variable to store the ID of the most recently added transaction.
+let lastAddedTransactionID = null;
+
 // Load config and determine the CSV file path.
 const config = require("./config.json");
 const csvFilePath = path.join(__dirname, "transactions.csv");
 
 // Dynamically populate the child dropdown based on config.json.
 const childDropdown = document.getElementById("child");
-childDropdown.innerHTML = ""; // Clear any static options.
+childDropdown.innerHTML = "";
 config.children.forEach((child) => {
-  const option = document.createElement("option");
-  option.value = child.name;
-  option.text = child.name;
-  childDropdown.appendChild(option);
+    const option = document.createElement("option");
+    option.value = child.name;
+    option.text = child.name;
+    childDropdown.appendChild(option);
 });
 
-// Set the default value of the date input to today.
+// Set default value of the date input to today.
 const dateInput = document.getElementById("transaction-date");
 const todayStr = new Date().toISOString().substring(0, 10);
 dateInput.value = todayStr;
 
-/**
- * Loads and renders the transaction history for a given child.
- * The CSV is read, the lines are parsed into objects, sorted by date,
- * and then rendered into an HTML table. A running total balance is computed.
- */
-function loadTransactionHistory(childName) {
-  if (!fs.existsSync(csvFilePath)) {
-    document.getElementById("transaction-history").innerHTML =
-      "<p>No transactions found.</p>";
-    return;
-  }
-
-  fs.readFile(csvFilePath, "utf8", (err, data) => {
-    if (err) {
-      console.error("Error reading transaction history:", err);
-      return;
-    }
-
-    // Split CSV into non-empty lines.
-    const lines = data.split("\n").filter((line) => line.trim() !== "");
-    if (lines.length <= 1) {
-      document.getElementById("transaction-history").innerHTML =
-        "<p>No transactions found.</p>";
-      return;
-    }
-
-    // First line contains headers.
-    const headers = lines[0].split(",").map((h) => h.trim());
-
-    const transactions = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",");
-      if (cols.length < headers.length) continue;
-      const tx = {};
-      headers.forEach((header, index) => {
-        tx[header] = cols[index].trim();
-      });
-      if (tx["Child"] === childName) {
-        tx.dateObj = new Date(tx["Date"]);
-        tx.Amount = parseFloat(tx["Amount"]);
-        transactions.push(tx);
-      }
-    }
-
-    // Sort transactions by date ascending.
-    transactions.sort((a, b) => a.dateObj - b.dateObj);
-
-    // Build HTML table & compute running balance.
-    let html =
-      "<table border='1' cellspacing='0' cellpadding='4'><thead><tr>";
-    headers.forEach((col) => {
-      html += `<th>${col}</th>`;
-    });
-    html += "</tr></thead><tbody>";
-
-    let total = 0;
-    transactions.forEach((tx) => {
-      total += tx.Amount;
-      html += "<tr>";
-      headers.forEach((col) => {
-        html += `<td>${tx[col]}</td>`;
-      });
-      html += "</tr>";
-    });
-    html += "</tbody></table>";
-
-    // Append current balance.
-    html += `<p><strong>Current Balance:</strong> ${total.toFixed(2)}</p>`;
-
-    document.getElementById("transaction-history").innerHTML = html;
-  });
+// Helper function: format a number as US Dollars.
+function formatCurrency(amount) {
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD"
+    }).format(amount);
 }
 
 /**
- * Calculates the current tithing for the selected child.
- * Tithing = 10% of the sum of all income (positive amounts)
- * after the most recent transaction that had a note containing "tithing".
- * If no such transaction exists, all positive income is included.
+ * Loads and renders the transaction history for a given child.
+ * This reads the CSV file, applies filtering/sorting based on the controls,
+ * and highlights the newest transaction if applicable.
+ */
+function loadTransactionHistory(childName) {
+    if (!fs.existsSync(csvFilePath)) {
+        document.getElementById("transaction-history").innerHTML =
+            "<p>No transactions found.</p>";
+        return;
+    }
+
+    fs.readFile(csvFilePath, "utf8", (err, data) => {
+        if (err) {
+            console.error("Error reading transaction history:", err);
+            return;
+        }
+
+        const lines = data.split("\n").filter((line) => line.trim() !== "");
+        if (lines.length <= 1) {
+            document.getElementById("transaction-history").innerHTML =
+                "<p>No transactions found.</p>";
+            return;
+        }
+
+        // Parse header from CSV.
+        const headers = lines[0].split(",").map((h) => h.trim());
+        let transactions = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(",");
+            if (cols.length < headers.length) continue;
+
+            const tx = {};
+            headers.forEach((header, index) => {
+                tx[header] = cols[index].trim();
+            });
+            if (tx["Child"] === childName) {
+                tx.dateObj = new Date(tx["Date"]);
+                tx.Amount = parseFloat(tx["Amount"]);
+                transactions.push(tx);
+            }
+        }
+
+        // Apply filter by type if needed.
+        const filterType = document.getElementById("filter-type").value;
+        if (filterType !== "all") {
+            transactions = transactions.filter((tx) => tx["Type"] === filterType);
+        }
+
+        // Apply sorting.
+        const sortBy = document.getElementById("sort-by").value;
+        if (sortBy === "date-asc") {
+            transactions.sort((a, b) => a.dateObj - b.dateObj);
+        } else if (sortBy === "date-desc") {
+            transactions.sort((a, b) => b.dateObj - a.dateObj);
+        } else if (sortBy === "amount-asc") {
+            transactions.sort((a, b) => a.Amount - b.Amount);
+        } else if (sortBy === "amount-desc") {
+            transactions.sort((a, b) => b.Amount - a.Amount);
+        }
+
+        // Build the HTML table.
+        let html =
+            "<table border='1' cellspacing='0' cellpadding='4'><thead><tr>";
+        headers.forEach((col) => {
+            if (col === "ID") return;
+            html += `<th>${col}</th>`;
+        });
+        html += "</tr></thead><tbody>";
+
+        let total = 0;
+        transactions.forEach((tx) => {
+            total += tx.Amount;
+            const rowClass = tx["ID"] === lastAddedTransactionID ? "highlight" : "";
+            html += `<tr class="${rowClass}">`;
+            headers.forEach((col) => {
+                if (col === "ID") return;
+                let cellValue = tx[col];
+                if (col === "Amount") {
+                    cellValue = formatCurrency(tx.Amount);
+                }
+                html += `<td>${cellValue}</td>`;
+            });
+            html += "</tr>";
+        });
+        html += "</tbody></table>";
+
+        // Append current balance.
+        html += `<p><strong>Current Balance:</strong> ${formatCurrency(total)}</p>`;
+
+        document.getElementById("transaction-history").innerHTML = html;
+    });
+}
+
+/**
+ * Calculates the current tithing for a child.
+ * Tithing = 10% of the total positive income after the last transaction
+ * (by date) with a note containing "tithing".
  */
 function calculateTithing(childName) {
-  if (!fs.existsSync(csvFilePath)) {
-    document.getElementById("tithing-result").innerHTML =
-      "<p>No transactions available.</p>";
-    return;
-  }
-
-  fs.readFile(csvFilePath, "utf8", (err, data) => {
-    if (err) {
-      console.error("Error reading transactions for tithing calculation:", err);
-      return;
+    if (!fs.existsSync(csvFilePath)) {
+        document.getElementById("tithing-result").innerHTML =
+            "<p>No transactions available.</p>";
+        return;
     }
 
-    const lines = data.split("\n").filter((line) => line.trim() !== "");
-    if (lines.length <= 1) {
-      document.getElementById("tithing-result").innerHTML =
-        "<p>No transactions found.</p>";
-      return;
-    }
+    fs.readFile(csvFilePath, "utf8", (err, data) => {
+        if (err) {
+            console.error("Error reading transactions for tithing calculation:", err);
+            return;
+        }
 
-    // Parse CSV header.
-    const headers = lines[0].split(",").map((h) => h.trim());
-    const childIndex = headers.indexOf("Child");
-    const dateIndex = headers.indexOf("Date");
-    const amountIndex = headers.indexOf("Amount");
-    const noteIndex = headers.indexOf("Note");
+        const lines = data.split("\n").filter((line) => line.trim() !== "");
+        if (lines.length <= 1) {
+            document.getElementById("tithing-result").innerHTML =
+                "<p>No transactions found.</p>";
+            return;
+        }
 
-    const transactions = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",");
-      if (cols.length < headers.length) continue;
-      if (cols[childIndex].trim() === childName) {
-        const tx = {
-          dateObj: new Date(cols[dateIndex].trim()),
-          amount: parseFloat(cols[amountIndex].trim()),
-          note: cols[noteIndex].trim().toLowerCase() // For case-insensitive search
-        };
-        transactions.push(tx);
-      }
-    }
+        const headers = lines[0].split(",").map((h) => h.trim());
+        const childIndex = headers.indexOf("Child");
+        const dateIndex = headers.indexOf("Date");
+        const amountIndex = headers.indexOf("Amount");
+        const noteIndex = headers.indexOf("Note");
 
-    // Sort transactions by date ascending.
-    transactions.sort((a, b) => a.dateObj - b.dateObj);
+        const transactions = [];
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(",");
+            if (cols.length < headers.length) continue;
+            if (cols[childIndex].trim() === childName) {
+                const tx = {
+                    dateObj: new Date(cols[dateIndex].trim()),
+                    amount: parseFloat(cols[amountIndex].trim()),
+                    note: cols[noteIndex].trim().toLowerCase()
+                };
+                transactions.push(tx);
+            }
+        }
 
-    // Find the cutoff date: the most recent transaction whose note includes "tithing".
-    let cutoffDate = new Date(0); // default: beginning of time
-    transactions.forEach((tx) => {
-      if (tx.note.includes("tithing")) {
-        cutoffDate = tx.dateObj;
-      }
+        transactions.sort((a, b) => a.dateObj - b.dateObj);
+
+        let cutoffDate = new Date(0);
+        transactions.forEach((tx) => {
+            if (tx.note.includes("tithing")) {
+                cutoffDate = tx.dateObj;
+            }
+        });
+
+        let incomeSum = 0;
+        transactions.forEach((tx) => {
+            if (tx.dateObj > cutoffDate && tx.amount > 0) {
+                incomeSum += tx.amount;
+            }
+        });
+
+        const tithingAmount = incomeSum * 0.1;
+        document.getElementById("tithing-result").innerHTML = `<p>Based on income of ${formatCurrency(
+            incomeSum
+        )} since the last tithing transaction, tithing should be <strong>${formatCurrency(
+            tithingAmount
+        )}</strong>.</p>`;
     });
-
-    // Sum all positive amounts (income) after the cutoff date.
-    let incomeSum = 0;
-    transactions.forEach((tx) => {
-      if (tx.dateObj > cutoffDate && tx.amount > 0) {
-        incomeSum += tx.amount;
-      }
-    });
-
-    const tithingAmount = incomeSum * 0.1;
-    document.getElementById("tithing-result").innerHTML = `<p>Based on income of ${incomeSum.toFixed(
-      2
-    )} since the last tithing transaction, tithing should be <strong>${tithingAmount.toFixed(
-      2
-    )}</strong>.</p>`;
-  });
 }
 
 // Event listeners
 
 childDropdown.addEventListener("change", (e) => {
-  loadTransactionHistory(e.target.value);
-  // Clear any previous tithing calculation.
-  document.getElementById("tithing-result").innerHTML = "";
+    loadTransactionHistory(e.target.value);
+    document.getElementById("tithing-result").innerHTML = "";
 });
 
-// Load transaction history initially for the first child.
+document
+    .getElementById("apply-filters-button")
+    .addEventListener("click", () => {
+        loadTransactionHistory(childDropdown.value);
+    });
+
 if (childDropdown.value) {
-  loadTransactionHistory(childDropdown.value);
+    loadTransactionHistory(childDropdown.value);
 }
 
-// Handle form submission for ad hoc transactions.
 document.getElementById("transaction-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const child = document.getElementById("child").value;
-  const type = document.getElementById("type").value;
-  const transactionDate = document.getElementById("transaction-date").value;
-  const amount = parseFloat(document.getElementById("amount").value);
-  const note = document.getElementById("note").value;
+    e.preventDefault();
+    const child = document.getElementById("child").value;
+    const type = document.getElementById("type").value;
+    const transactionDate = document.getElementById("transaction-date").value;
+    const amount = parseFloat(document.getElementById("amount").value);
+    const note = document.getElementById("note").value;
 
-  // Send the custom transaction to the main process.
-  ipcRenderer.send("add-custom-transaction", {
-    child,
-    type,
-    amount,
-    note,
-    date: transactionDate,
-  });
+    const uniqueId = crypto.randomUUID();
+    lastAddedTransactionID = uniqueId;
+
+    ipcRenderer.send("add-custom-transaction", {
+        id: uniqueId,
+        child,
+        type,
+        amount,
+        note,
+        date: transactionDate
+    });
 });
 
-// Listen for acknowledgment from the main process after a transaction is added.
 ipcRenderer.on("transaction-added", (event, message) => {
-  document.getElementById("message").innerText = message;
-  // Refresh the transaction history (for the current child)
-  loadTransactionHistory(document.getElementById("child").value);
+    document.getElementById("message").innerText = message;
+    loadTransactionHistory(document.getElementById("child").value);
 });
 
-// Handle tithing calculation when the button is clicked.
 document
-  .getElementById("calculate-tithing-button")
-  .addEventListener("click", () => {
-    const child = childDropdown.value;
-    calculateTithing(child);
-  });
+    .getElementById("calculate-tithing-button")
+    .addEventListener("click", () => {
+        calculateTithing(childDropdown.value);
+    });
