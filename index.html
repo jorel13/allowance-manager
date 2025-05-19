@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Children's Allowance Manager</title>
+</head>
+
+<body>
+    <h1>Children's Allowance Manager</h1>
+
+    <!-- Form for ad hoc transactions -->
+    <form id="transaction-form">
+        <label for="child">Child:</label>
+        <select id="child" name="child">
+            <!-- Options will be created automatically -->
+        </select>
+        <br /><br />
+
+        <label for="type">Transaction Type:</label>
+        <select id="type" name="type">
+            <option value="Expense">Expense</option>
+            <option value="Income">Income</option>
+        </select>
+        <br /><br />
+
+        <label for="transaction-date">Transaction Date:</label>
+        <input type="date" id="transaction-date" required />
+        <br /><br />
+
+        <label for="amount">Amount:</label>
+        <input type="number" id="amount" step="0.01" required />
+        <br /><br />
+
+        <label for="note">Note:</label>
+        <input type="text" id="note" />
+        <br /><br />
+
+        <button type="submit">Add Transaction</button>
+    </form>
+
+    <div id="message"></div>
+
+    <!-- Transaction history display -->
+    <h2>Transaction History</h2>
+    <div id="transaction-history">
+        <!-- History table will be loaded here -->
+    </div>
+
+    <!-- Tithing Calculator -->
+    <h2>Tithing Calculator</h2>
+    <button id="calculate-tithing-button">Calculate Tithing</button>
+    <div id="tithing-result"></div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>
