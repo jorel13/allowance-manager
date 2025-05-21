@@ -145,7 +145,9 @@ function createWindow() {
             // For simplicity in this example, enable Node integration.
             nodeIntegration: true,
             contextIsolation: false
-        }
+        },
+        // For Windows (and Linux), the icon property will be used.
+        icon: path.join(__dirname, 'build', 'icon.ico')
     });
     win.loadFile("index.html");
 }

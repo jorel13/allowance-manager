@@ -115,6 +115,9 @@ function loadTransactionHistory(childName) {
                 if (col === "Amount") {
                     cellValue = formatCurrency(tx.Amount);
                 }
+                if (col === "Date") {
+                    cellValue = tx.Date.split("T")[0];
+                }
                 html += `<td>${cellValue}</td>`;
             });
             html += "</tr>";
@@ -122,9 +125,9 @@ function loadTransactionHistory(childName) {
         html += "</tbody></table>";
 
         // Append current balance.
-        html += `<p><strong>Current Balance:</strong> ${formatCurrency(total)}</p>`;
+        let final = `<p><strong>Current Balance:</strong> ${formatCurrency(total)}</p>` + html;
 
-        document.getElementById("transaction-history").innerHTML = html;
+        document.getElementById("transaction-history").innerHTML = final;
     });
 }
 
@@ -241,8 +244,13 @@ ipcRenderer.on("transaction-added", (event, message) => {
     loadTransactionHistory(document.getElementById("child").value);
 });
 
-document
-    .getElementById("calculate-tithing-button")
-    .addEventListener("click", () => {
-        calculateTithing(childDropdown.value);
-    });
+// Hide / Show Tithing based on config
+if (!config.tithing) {
+    document.getElementById("tithing-container").innerHTML = "";
+} else {
+    document
+        .getElementById("calculate-tithing-button")
+        .addEventListener("click", () => {
+            calculateTithing(childDropdown.value);
+        });
+}

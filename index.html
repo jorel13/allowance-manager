@@ -12,14 +12,47 @@
             }
         }
 
-        .highlight {
-            background-color: yellow;
-            transition: background-color 1s ease;
+        :root {
+            --primary: #4a90e2;
+            --secondary: #e1e1e1;
+            --bg-color: #f9f9f9;
+            --font-family: 'Roboto', sans-serif;
+        }
+
+        h1 {
+            text-align: center;
         }
 
 
+        h2 {
+            margin-top: 30px;
+        }
+
         table {
             margin-bottom: 10px;
+            width: 100%;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-family);
+            color: #333;
+            margin: 20px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ab8;
+            /* A slightly darker blue */
         }
 
         .container {
@@ -44,33 +77,13 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        :root {
-            --primary: #4a90e2;
-            --secondary: #e1e1e1;
-            --bg-color: #f9f9f9;
-            --font-family: 'Roboto', sans-serif;
+        div#tithing-result {
+            margin-top: 20px;
         }
 
-        body {
-            background-color: var(--bg-color);
-            font-family: var(--font-family);
-            color: #333;
-            margin: 20px;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 15px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #357ab8;
-            /* A slightly darker blue */
+        .highlight {
+            background-color: rgb(0, 255, 13);
+            transition: background-color 1s ease;
         }
     </style>
 </head>
@@ -82,11 +95,12 @@
             <!-- Form for ad hoc transactions -->
             <form id="transaction-form" class="mb-4">
                 <div class="form-group">
-                    <label for="child">Child:</label>
+                    <label for="child">Select Child:</label>
                     <select id="child" name="child" class="form-control">
                         <!-- Options will be created automatically -->
                     </select>
                 </div>
+                <h2>Add Transaction</h2>
                 <div class="form-group">
                     <label for="type">Transaction Type:</label>
                     <select id="type" name="type" class="form-control">
@@ -113,9 +127,11 @@
             <div id="message"></div>
 
             <!-- Tithing Calculator -->
-            <h2>Tithing Calculator</h2>
-            <button id="calculate-tithing-button">Calculate Tithing</button>
-            <div id="tithing-result"></div>
+            <div id="tithing-container">
+                <h2>Tithing Calculator</h2>
+                <button id="calculate-tithing-button">Calculate Tithing</button>
+                <div id="tithing-result"></div>
+            </div>
         </div>
         <div class="history-section">
             <!-- Controls for filtering and sorting the transaction history -->
