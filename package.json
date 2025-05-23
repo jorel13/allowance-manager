@@ -12,7 +12,8 @@
   "license": "ISC",
   "description": "A little app used to track kids' allowance.",
   "dependencies": {
-    "csv-writer": "^1.6.0"
+    "csv-writer": "^1.6.0",
+    "electron-default-menu": "^1.0.2"
   },
   "devDependencies": {
     "electron": "^36.2.1"

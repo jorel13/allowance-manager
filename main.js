@@ -1,5 +1,6 @@
 // main.js
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const defaultMenu = require('electron-default-menu');  // Import the default menu helper
 const path = require('path');
 const fs = require('fs');
 const { addTransaction, csvFilePath } = require('./transactionmanager');
@@ -28,7 +29,7 @@ function getLastWeeklyAllowance(childName) {
 
     for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',');
-        
+
         if (cols[typeIndex].trim() === "Weekly Allowance" && cols[childIndex].trim() === childName) {
             const dt = new Date(cols[dateIndex].trim());
             if (!lastDate || dt > lastDate) {
@@ -152,13 +153,54 @@ function createWindow() {
     win.loadFile("index.html");
 }
 
+// --- Create a Config Editor Window ---
+function createConfigEditorWindow() {
+    const editorWindow = new BrowserWindow({
+        width: 600,
+        height: 400,
+        title: 'Edit Config',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+    editorWindow.loadFile('config-editor.html');
+}
+
+
+
 app.whenReady().then(async () => {
+    // --- Build an application menu with an "Edit Config" option ---
+    const fileMenuTemplate = {
+        label: 'File',
+        submenu: [
+            {
+                label: 'Edit Config',
+                click() {
+                    createConfigEditorWindow();
+                }
+            },
+            { role: 'quit' }
+        ]
+    };
+
+    // Get the default menu template for the current platform.
+    const menuTemplate = defaultMenu(app, BrowserWindow);
+    menuTemplate.splice(0, 0, fileMenuTemplate);
+
+    // Set the application menu using the modified template.
+    Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
+
     await catchupAllowances();
     createWindow();
 
     app.on("activate", function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+});
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
 });
 
 // Handle ad hoc transaction requests from the renderer.
@@ -190,6 +232,12 @@ ipcMain.on("add-custom-transaction", (event, transaction) => {
         .catch((err) => {
             event.reply("transaction-added", "Error adding transaction: " + err);
         });
+});
+
+// Handle config updates by clearing the cache and reloading the config file
+ipcMain.on("config-update-successful", (event) => {
+    delete require.cache[require.resolve('./config.json')];
+    const config = require('./config.json');
 });
 
 app.on("window-all-closed", function () {
