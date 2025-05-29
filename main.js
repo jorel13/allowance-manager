@@ -234,6 +234,35 @@ ipcMain.on("add-custom-transaction", (event, transaction) => {
         });
 });
 
+// Handle transaction deletion requests from the renderer.
+ipcMain.on("delete-transaction", (event, transactionId) => {
+    if (!fs.existsSync(csvFilePath)) {
+        event.reply("transaction-deleted", "No transactions file found.");
+        return;
+    }
+    fs.readFile(csvFilePath, "utf8", (err, data) => {
+        if (err) {
+            event.reply("transaction-deleted", "Error reading transactions: " + err);
+            return;
+        }
+        const lines = data.split("\n");
+        const header = lines[0];
+        const filtered = lines.filter((line, idx) => {
+            if (idx === 0) return true; // keep header
+            if (!line.trim()) return false;
+            const cols = line.split(",");
+            return cols[0] !== transactionId;
+        });
+        fs.writeFile(csvFilePath, filtered.join("\n"), "utf8", (err) => {
+            if (err) {
+                event.reply("transaction-deleted", "Error deleting transaction: " + err);
+            } else {
+                event.reply("transaction-deleted", "Transaction deleted successfully.");
+            }
+        });
+    });
+});
+
 // Handle config updates by clearing the cache and reloading the config file
 ipcMain.on("config-update-successful", (event) => {
     delete require.cache[require.resolve('./config.json')];

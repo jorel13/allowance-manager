@@ -102,7 +102,7 @@ function loadTransactionHistory(childName) {
             if (col === "ID") return;
             html += `<th>${col}</th>`;
         });
-        html += "</tr></thead><tbody>";
+        html += "<th>Action</th></tr></thead><tbody>";
 
         let total = 0;
         transactions.forEach((tx) => {
@@ -120,6 +120,8 @@ function loadTransactionHistory(childName) {
                 }
                 html += `<td>${cellValue}</td>`;
             });
+            // Add delete button with data-id attribute
+            html += `<td><button class='delete-btn' data-id='${tx["ID"]}'>Delete</button></td>`;
             html += "</tr>";
         });
         html += "</tbody></table>";
@@ -128,6 +130,16 @@ function loadTransactionHistory(childName) {
         let final = `<p><strong>Current Balance:</strong> ${formatCurrency(total)}</p>` + html;
 
         document.getElementById("transaction-history").innerHTML = final;
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                if (confirm('Are you sure you want to delete this transaction?')) {
+                    ipcRenderer.send('delete-transaction', id);
+                }
+            });
+        });
     });
 }
 
@@ -240,6 +252,12 @@ document.getElementById("transaction-form").addEventListener("submit", (e) => {
 });
 
 ipcRenderer.on("transaction-added", (event, message) => {
+    document.getElementById("message").innerText = message;
+    loadTransactionHistory(document.getElementById("child").value);
+});
+
+// Listen for transaction-deleted event from main process
+ipcRenderer.on("transaction-deleted", (event, message) => {
     document.getElementById("message").innerText = message;
     loadTransactionHistory(document.getElementById("child").value);
 });
