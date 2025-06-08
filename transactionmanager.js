@@ -3,10 +3,17 @@ const fs = require("fs");
 const path = require("path");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
-const csvFilePath = path.join(__dirname, "transactions.csv");
-
-function getCsvWriter() {
+function getCsvWriter(csvFilePath) {
     const fileExists = fs.existsSync(csvFilePath);
+    
+    // If file doesn't exist, create directory if needed
+    if (!fileExists) {
+        const dir = path.dirname(csvFilePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    }
+    
     return createCsvWriter({
         path: csvFilePath,
         header: [
@@ -21,9 +28,9 @@ function getCsvWriter() {
     });
 }
 
-function addTransaction(transaction) {
-    const writer = getCsvWriter();
+function addTransaction(transaction, csvFilePath) {
+    const writer = getCsvWriter(csvFilePath);
     return writer.writeRecords([transaction]);
 }
 
-module.exports = { addTransaction, csvFilePath };
+module.exports = { addTransaction };

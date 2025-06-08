@@ -6,9 +6,17 @@ const path = require("path");
 // Global variable to store the ID of the most recently added transaction.
 let lastAddedTransactionID = null;
 
-// Load config and determine the CSV file path.
+// Load config and initialize CSV file path
 const config = require("./config.json");
-const csvFilePath = path.join(__dirname, "transactions.csv");
+let csvFilePath = path.join(__dirname, "transactions.csv");
+
+// Listen for the CSV file path from the main process
+ipcRenderer.on('csv-file-path', (event, path) => {
+    csvFilePath = path;
+    if (childDropdown.value) {
+        loadTransactionHistory(childDropdown.value);
+    }
+});
 
 // Dynamically populate the child dropdown based on config.json.
 const childDropdown = document.getElementById("child");

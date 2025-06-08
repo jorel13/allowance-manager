@@ -3,7 +3,14 @@ const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const defaultMenu = require('electron-default-menu');  // Import the default menu helper
 const path = require('path');
 const fs = require('fs');
-const { addTransaction, csvFilePath } = require('./transactionmanager');
+// Use Electron's userData directory for transactions.csv in production, __dirname in dev
+// For Windows the path ends up being something like:
+// C:\Users\<username>\AppData\Roaming\allowance-manager\transactions.csv
+const defaultCsvPath = path.join(__dirname, 'transactions.csv');
+const csvFilePath = app.isPackaged
+    ? path.join(app.getPath('userData'), 'transactions.csv')
+    : defaultCsvPath;
+const { addTransaction } = require('./transactionmanager');
 
 // Load children configuration
 const config = require('./config.json');
@@ -125,7 +132,7 @@ async function catchupAllowances() {
                 note: `Allowance for ${childName} (age ${age})`
             };
             try {
-                await addTransaction(transaction);
+                await addTransaction(transaction, csvFilePath);
                 console.log(`Added allowance for ${childName} on ${nextFriday.toISOString()}`);
             } catch (err) {
                 console.error(`Error adding allowance for ${childName} on ${nextFriday.toISOString()}:`, err);
@@ -151,6 +158,11 @@ function createWindow() {
         icon: path.join(__dirname, 'build', 'icon.ico')
     });
     win.loadFile("index.html");
+    
+    // Send the CSV file path to the renderer once the window is ready
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.send('csv-file-path', csvFilePath);
+    });
 }
 
 // --- Create a Config Editor Window ---
@@ -225,7 +237,7 @@ ipcMain.on("add-custom-transaction", (event, transaction) => {
         transaction.amount = Math.abs(transaction.amount);
     }
 
-    addTransaction(transaction)
+    addTransaction(transaction, csvFilePath)
         .then(() => {
             event.reply("transaction-added", "Transaction successfully added!");
         })
