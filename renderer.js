@@ -46,7 +46,8 @@ function formatCurrency(amount) {
  * This reads the CSV file, applies filtering/sorting based on the controls,
  * and highlights the newest transaction if applicable.
  */
-function loadTransactionHistory(childName) {
+let displayedYears = [];
+function loadTransactionHistory(childName, appendYear = false) {
     if (!fs.existsSync(csvFilePath)) {
         document.getElementById("transaction-history").innerHTML =
             "<p>No transactions found.</p>";
@@ -91,8 +92,9 @@ function loadTransactionHistory(childName) {
             transactions = transactions.filter((tx) => tx["Type"] === filterType);
         }
 
-        // Apply sorting.
-        const sortBy = document.getElementById("sort-by").value;
+        // Apply sorting. Default to date-desc if not set.
+        let sortBy = document.getElementById("sort-by").value;
+        if (!sortBy) sortBy = "date-desc";
         if (sortBy === "date-asc") {
             transactions.sort((a, b) => a.dateObj - b.dateObj);
         } else if (sortBy === "date-desc") {
@@ -103,9 +105,31 @@ function loadTransactionHistory(childName) {
             transactions.sort((a, b) => b.Amount - a.Amount);
         }
 
+        // Pagination by calendar year
+        if (!appendYear) {
+            // Reset displayed years if not appending
+            displayedYears = [];
+        }
+        // Find all years present in the transactions
+        const years = [...new Set(transactions.map(tx => tx.dateObj.getFullYear()))].sort((a, b) => b - a);
+        // Determine which year to show next
+        let nextYear;
+        if (displayedYears.length === 0) {
+            nextYear = years[0];
+        } else {
+            // Find the next earlier year not yet shown
+            nextYear = years.find(y => !displayedYears.includes(y));
+        }
+        if (nextYear === undefined) {
+            // No more years to show
+            return;
+        }
+        displayedYears.push(nextYear);
+        // Filter transactions to only those in displayedYears
+        const pagedTransactions = transactions.filter(tx => displayedYears.includes(tx.dateObj.getFullYear()));
+
         // Build the HTML table.
-        let html =
-            "<table border='1' cellspacing='0' cellpadding='4'><thead><tr>";
+        let html = `<table border='1' cellspacing='0' cellpadding='4'><thead><tr>`;
         headers.forEach((col) => {
             if (col === "ID") return;
             html += `<th>${col}</th>`;
@@ -113,7 +137,7 @@ function loadTransactionHistory(childName) {
         html += "<th>Action</th></tr></thead><tbody>";
 
         let total = 0;
-        transactions.forEach((tx) => {
+        pagedTransactions.forEach((tx) => {
             total += tx.Amount;
             const rowClass = tx["ID"] === lastAddedTransactionID ? "highlight" : "";
             html += `<tr class="${rowClass}">`;
@@ -137,6 +161,11 @@ function loadTransactionHistory(childName) {
         // Append current balance.
         let final = `<p><strong>Current Balance:</strong> ${formatCurrency(total)}</p>` + html;
 
+        // Add Load More button if there are more years
+        if (displayedYears.length < years.length) {
+            final += `<button id="load-more-years">Load More</button>`;
+        }
+
         document.getElementById("transaction-history").innerHTML = final;
 
         // Add event listeners for delete buttons
@@ -148,6 +177,14 @@ function loadTransactionHistory(childName) {
                 }
             });
         });
+
+        // Add event listener for Load More button
+        const loadMoreBtn = document.getElementById("load-more-years");
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function() {
+                loadTransactionHistory(childName, true);
+            });
+        }
     });
 }
 
@@ -223,16 +260,19 @@ function calculateTithing(childName) {
 
 // Event listeners
 
+
 childDropdown.addEventListener("change", (e) => {
     loadTransactionHistory(e.target.value);
     document.getElementById("tithing-result").innerHTML = "";
 });
+
 
 document
     .getElementById("apply-filters-button")
     .addEventListener("click", () => {
         loadTransactionHistory(childDropdown.value);
     });
+
 
 if (childDropdown.value) {
     loadTransactionHistory(childDropdown.value);
