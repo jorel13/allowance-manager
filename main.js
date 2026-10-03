@@ -12,8 +12,25 @@ const csvFilePath = app.isPackaged
     : defaultCsvPath;
 const { addTransaction } = require('./transactionmanager');
 
+// Use the userData directory for config.json in production, __dirname in dev.
+// The bundled config.json lives inside app.asar, which is read-only, so on first
+// run of the packaged app it is copied to userData where it can be edited.
+const defaultConfigPath = path.join(__dirname, 'config.json');
+const configFilePath = app.isPackaged
+    ? path.join(app.getPath('userData'), 'config.json')
+    : defaultConfigPath;
+
+function loadConfig() {
+    if (!fs.existsSync(configFilePath)) {
+        fs.mkdirSync(path.dirname(configFilePath), { recursive: true });
+        fs.writeFileSync(configFilePath, fs.readFileSync(defaultConfigPath, 'utf8'), 'utf8');
+    }
+    return JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+}
+
 // Load children configuration
-const config = require('./config.json');
+let config = loadConfig();
+let mainWindow = null;
 
 /* ------------------ Helper Functions ------------------ */
 
@@ -146,7 +163,7 @@ async function catchupAllowances() {
 /* ------------------ Electron App Setup ------------------ */
 
 function createWindow() {
-    const win = new BrowserWindow({
+    const win = mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
@@ -275,10 +292,24 @@ ipcMain.on("delete-transaction", (event, transactionId) => {
     });
 });
 
-// Handle config updates by clearing the cache and reloading the config file
-ipcMain.on("config-update-successful", (event) => {
-    delete require.cache[require.resolve('./config.json')];
-    const config = require('./config.json');
+// Let renderer windows know where the editable config file lives.
+ipcMain.on("get-config-path", (event) => {
+    event.returnValue = configFilePath;
+});
+
+// Handle config updates by reloading the config file, catching up allowances
+// for any new children, and reloading the main window so the UI picks them up.
+ipcMain.on("config-update-successful", async () => {
+    try {
+        config = loadConfig();
+    } catch (err) {
+        console.error("Error reloading config:", err);
+        return;
+    }
+    await catchupAllowances();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.reload();
+    }
 });
 
 app.on("window-all-closed", function () {
