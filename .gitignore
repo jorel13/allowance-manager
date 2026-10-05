@@ -5,3 +5,7 @@ dist
 #files
 *.tgz
 *.log
+
+#local data
+config.json
+transactions.csv

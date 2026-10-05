@@ -1,0 +1,10 @@
+{
+    "children": [
+        {
+            "name": "Alex",
+            "birthdate": "2015-04-01",
+            "allowanceStartDate": "2025-01-03"
+        }
+    ],
+    "tithing": true
+}

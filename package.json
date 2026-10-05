@@ -23,6 +23,11 @@
     "appId": "com.jp.allowance-manager",
     "productName": "Allowance Manager",
     "icon": "build/icon",
+    "files": [
+      "**/*",
+      "!config.json",
+      "!transactions.csv"
+    ],
     "win": {
       "target": [
         "nsis"

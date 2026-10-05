@@ -13,17 +13,17 @@ const csvFilePath = app.isPackaged
 const { addTransaction } = require('./transactionmanager');
 
 // Use the userData directory for config.json in production, __dirname in dev.
-// The bundled config.json lives inside app.asar, which is read-only, so on first
-// run of the packaged app it is copied to userData where it can be edited.
-const defaultConfigPath = path.join(__dirname, 'config.json');
+// config.json is not committed; on first run it is created from the bundled
+// config.example.json (read-only inside app.asar when packaged).
+const exampleConfigPath = path.join(__dirname, 'config.example.json');
 const configFilePath = app.isPackaged
     ? path.join(app.getPath('userData'), 'config.json')
-    : defaultConfigPath;
+    : path.join(__dirname, 'config.json');
 
 function loadConfig() {
     if (!fs.existsSync(configFilePath)) {
         fs.mkdirSync(path.dirname(configFilePath), { recursive: true });
-        fs.writeFileSync(configFilePath, fs.readFileSync(defaultConfigPath, 'utf8'), 'utf8');
+        fs.writeFileSync(configFilePath, fs.readFileSync(exampleConfigPath, 'utf8'), 'utf8');
     }
     return JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
 }
