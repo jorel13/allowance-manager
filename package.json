@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "Jorel Perez",
-  "license": "ISC",
+  "license": "MIT",
   "description": "A little app used to track kids' allowance.",
   "dependencies": {
     "csv-writer": "^1.6.0",
