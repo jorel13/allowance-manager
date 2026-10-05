@@ -106,6 +106,13 @@ function loadTransactionHistory(childName, appendYear = false) {
             transactions.sort((a, b) => b.Amount - a.Amount);
         }
 
+        // Clear any previous child's table when there is nothing to show.
+        if (transactions.length === 0) {
+            document.getElementById("transaction-history").innerHTML =
+                "<p>No transactions found.</p>";
+            return;
+        }
+
         // Pagination by calendar year
         if (!appendYear) {
             // Reset displayed years if not appending
