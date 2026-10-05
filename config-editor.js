@@ -1,10 +1,9 @@
 // config-editor.js
 const { ipcRenderer } = require("electron");
 const fs = require('fs');
-const path = require('path');
 
-// Adjust the path to your config file as needed
-const configPath = path.join(__dirname, 'config.json');
+// The main process owns the config location (userData when packaged).
+const configPath = ipcRenderer.sendSync("get-config-path");
 
 window.addEventListener('DOMContentLoaded', () => {
     const textarea = document.getElementById('configText');

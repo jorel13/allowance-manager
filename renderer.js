@@ -7,7 +7,8 @@ const path = require("path");
 let lastAddedTransactionID = null;
 
 // Load config and initialize CSV file path
-const config = require("./config.json");
+const configPath = ipcRenderer.sendSync("get-config-path");
+const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 let csvFilePath = path.join(__dirname, "transactions.csv");
 
 // Listen for the CSV file path from the main process
