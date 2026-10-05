@@ -137,9 +137,9 @@ function loadTransactionHistory(childName, appendYear = false) {
         });
         html += "<th>Action</th></tr></thead><tbody>";
 
-        let total = 0;
+        // Balance covers every transaction, not just the years currently shown.
+        const total = transactions.reduce((sum, tx) => sum + tx.Amount, 0);
         pagedTransactions.forEach((tx) => {
-            total += tx.Amount;
             const rowClass = tx["ID"] === lastAddedTransactionID ? "highlight" : "";
             html += `<tr class="${rowClass}">`;
             headers.forEach((col) => {
